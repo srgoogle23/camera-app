@@ -40,6 +40,17 @@
         {
           "cameraPermissionText": "$(PRODUCT_NAME) needs access to your Camera."
         }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Permita $(PRODUCT_NAME) ter acesso as fotos, para que possamos exibir as fotos tiradas durante sua pesquisa em sua biblioteca.",
+          "savePhotosPermission": "Permita $(PRODUCT_NAME) ter acesso para salvar as fotos, para que possamos salvar as fotos tiradas durante sua pesquisa em sua biblioteca.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ],
+      [
+        "./plugins/withAndroidMainActivityAttributes.js"
       ]
     ]
   }

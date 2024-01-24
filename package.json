@@ -9,6 +9,7 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@react-native-camera-roll/camera-roll": "^7.4.0",
     "@react-native-community/blur": "^4.4.0",
     "@react-navigation/core": "^6.4.10",
     "@react-navigation/native": "^6.1.9",
@@ -16,6 +17,7 @@
     "expo": "~49.0.15",
     "expo-file-system": "~15.4.5",
     "expo-image-manipulator": "~11.3.0",
+    "expo-media-library": "~15.4.1",
     "expo-splash-screen": "~0.20.5",
     "expo-status-bar": "~1.6.0",
     "react": "18.2.0",
@@ -29,8 +31,7 @@
     "react-native-static-safe-area-insets": "^2.2.0",
     "react-native-vector-icons": "^10.0.3",
     "react-native-vision-camera": "^3.8.2",
-    "react-native-worklets-core": "^0.2.4",
-    "expo-media-library": "~15.4.1"
+    "react-native-worklets-core": "^0.2.4"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

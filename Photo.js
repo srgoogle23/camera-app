@@ -2,12 +2,17 @@ import "react-native-gesture-handler";
 
 import * as React from "react";
 import { useRef, useState, useCallback, useMemo } from "react";
-import { Alert, Linking, StyleSheet, Text, View } from "react-native";
+import { Alert, Linking, StyleSheet, Text, View, Modal, Image, TouchableOpacity } from "react-native";
 import {
     PinchGestureHandler,
     TapGestureHandler,
 } from "react-native-gesture-handler";
-import { useCameraDevice, useCameraFormat, useCodeScanner } from "react-native-vision-camera";
+import {
+    useCameraDevice,
+    useCameraFormat,
+    useCodeScanner,
+    requestSavePermission,
+} from "react-native-vision-camera";
 import { Camera } from "react-native-vision-camera";
 import {
     CONTENT_SPACING,
@@ -34,7 +39,11 @@ import MaterialIcon from "react-native-vector-icons/MaterialCommunityIcons";
 import IonIcon from "react-native-vector-icons/Ionicons";
 import { useIsFocused } from "@react-navigation/core";
 import * as MediaLibrary from "expo-media-library";
-import Modal from "./Modal";
+import * as FileSystem from 'expo-file-system';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import ModalAPP from "./Modal";
+
+import { CameraRoll } from '@react-native-camera-roll/camera-roll'
 
 const ReanimatedCamera = Reanimated.createAnimatedComponent(Camera);
 Reanimated.addWhitelistedNativeProps({
@@ -79,6 +88,7 @@ export default function App({ navigation }) {
     const [modalVisible, setModalVisible] = useState(false); // modal de erro
     const [modalTitle, setModalTitle] = useState(""); // modal de erro
     const [modalText, setModalText] = useState(""); // modal de erro
+    const [capturedPhoto, setCapturedPhoto] = useState(null); // foto capturada
 
     // Verifica se a página da câmera está ativa
     const isFocussed = useIsFocused();
@@ -170,13 +180,6 @@ export default function App({ navigation }) {
         setIsCameraInitialized(true);
     }, []);
 
-    const onMediaCaptured = useCallback(
-        (media, type) => {
-            console.log(`Media captured! ${JSON.stringify(media)}`);
-        },
-        [navigation]
-    );
-
     const onFlipCameraPressed = useCallback(() => {
         setCameraPosition((p) => (p === "back" ? "front" : "back"));
     }, []);
@@ -186,6 +189,76 @@ export default function App({ navigation }) {
     }, []);
 
     const isShowingAlert = useRef(false);
+    /**
+     * CALLBACKS => FIM
+     */
+
+    /**
+     * PROCESSAMENTO DE MIDIA => INICIO
+     */
+    const onMediaCaptured = useCallback(
+       async (media, type) => {
+            try {
+                // recupera as informacoes da foto
+                let photoPath = `file://${media.path}`;
+                const filename = photoPath.split("/").pop();
+                // configura a nova pasta
+                const newDir = FileSystem.documentDirectory + `camera-app`;
+                // cria a pasta caso necessário
+                await FileSystem.makeDirectoryAsync(newDir, { intermediates: true });
+                // move a foto para a nova pasta
+                await FileSystem.moveAsync({ from: photoPath, to: newDir + '/' + filename });
+                // atualiza o caminho da foto
+                photoPath = newDir + '/' + filename;
+                // redimensiona a foto, de acordo com o height e width da mesma, com objetivo de que a width fique em 800px
+                const currentWidth = media.width > media.height ? media.height : media.width;
+                const currentHeight = media.width > media.height ? media.width : media.height;
+                let newWidth = 1000;
+                let newHeight = 1000;
+                if (currentWidth > currentHeight) {
+                    newHeight = (currentHeight * newWidth) / currentWidth;
+                } else {
+                    newWidth = (currentWidth * newHeight) / currentHeight;
+                }
+                const response = await manipulateAsync(photoPath,
+                    [{ resize: { width: newWidth, height: newHeight } }],
+                    { compress: 1, format: SaveFormat.JPEG }
+                );
+                // verifica se ja existe uma foto no local a ser movido
+                const exists = await FileSystem.getInfoAsync(photoPath);
+                if (exists.exists === true) {
+                    // remove a foto antiga e move a foto nova
+                    await FileSystem.deleteAsync(photoPath, { idempotent: true });
+                    await FileSystem.moveAsync({ from: response.uri, to: photoPath });
+                } else {
+                    // move a foto
+                    await FileSystem.moveAsync({ from: response.uri, to: photoPath });
+                }
+                // verifica se a nova foto foi movida com sucesso
+                const existsNew = await FileSystem.getInfoAsync(photoPath);
+                if (existsNew.exists === true) {
+                    setCapturedPhoto(photoPath);
+                } else {
+                    setCapturedPhoto(null);
+                }
+
+                await CameraRoll.save(photoPath, {
+                  type: type,
+                })
+
+            } catch (error) {
+                console.log(error);
+            }
+        },
+        [navigation]
+    );
+    /**
+     * PROCESSAMENTO DE MIDIA => FIM
+     */
+
+    /**
+     * CODE SCANNER => INICIO
+     */
     const onCodeScanned = useCallback((codes) => {
         console.log(`Scanned ${codes.length} codes:`, codes);
         const value = codes[0]?.value;
@@ -197,11 +270,11 @@ export default function App({ navigation }) {
         isShowingAlert.current = true;
     }, []);
     const codeScanner = useCodeScanner({
-        codeTypes: ["qr", "ean-13"],
+        codeTypes: ["ean-13"],
         onCodeScanned: onCodeScanned,
     });
     /**
-     * CALLBACKS => FIM
+     * CODE SCANNER  => FIM
      */
 
     /**
@@ -312,7 +385,7 @@ export default function App({ navigation }) {
     if (cameraPermission === false || cameraPermission === null) {
         return (
             <View style={[{ backgroundColor: "#FFFFFF", flex: 1 }]}>
-                <Modal
+                <ModalAPP
                     title={modalTitle}
                     text={modalText}
                     closeText={"Fechar"}
@@ -331,7 +404,7 @@ export default function App({ navigation }) {
     ) {
         return (
             <View style={[{ backgroundColor: "#FFFFFF", flex: 1 }]}>
-                <Modal
+                <ModalAPP
                     title={modalTitle}
                     text={modalText}
                     closeText={"Fechar"}
@@ -465,6 +538,28 @@ export default function App({ navigation }) {
                     <IonIcon name="settings-outline" color="white" size={24} />
                 </PressableOpacity>
             </View>
+
+            {capturedPhoto &&
+                <Modal
+                    animationType="slide"
+                    transparent={false}
+                    visible={capturedPhoto !== null}
+                >
+                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', margin: 20 }}>
+                        <Image
+                            style={{ width: '100%', height: '100%', borderRadius: 20 }}
+                            source={{ uri: capturedPhoto }}
+                        />
+                        <View style={{ width: '100%', flexDirection: 'row', justifyContent: 'space-evenly', margin: 20 }}>
+                            <TouchableOpacity style={{ margin: 10 }} onPress={() => {
+                                setCapturedPhoto(null);
+                            } }>
+                                <Text>Tirar novamente</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </Modal>
+            }
         </View>
     );
 }
