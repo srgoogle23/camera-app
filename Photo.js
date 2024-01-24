@@ -10,8 +10,7 @@ import {
 import {
     useCameraDevice,
     useCameraFormat,
-    useCodeScanner,
-    requestSavePermission,
+    useCodeScanner
 } from "react-native-vision-camera";
 import { Camera } from "react-native-vision-camera";
 import {
