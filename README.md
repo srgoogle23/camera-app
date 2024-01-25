@@ -1,7 +1,7 @@
 <h1 align="center">Camera APP</h1>
 
 <p align="center">
-  <a href="#-How-to-run">How to run</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
+  <a href="#-How-to-run">How to run</a>
 </p>
 
 ## 📋 Description
